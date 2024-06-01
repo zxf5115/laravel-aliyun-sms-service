@@ -18,5 +18,15 @@
     "psr-4": {
       "Zxf5115\\Laravel\\Aliyun\\Sms\\": "src/"
     }
+  },
+  "extra": {
+      "laravel": {
+          "providers": [
+              "Zxf5115\\Laravel\\Aliyun\\Sms\\Providers\\AliyunSmsServiceProvider"
+          ],
+          "aliases": {
+              "Sms": "Zxf5115\\Laravel\\Aliyun\\Sms\\Facades\\AliyunSmsFacade"
+          }
+      }
   }
 }
