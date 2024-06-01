@@ -1,0 +1,22 @@
+{
+  "name": "zxf5115/laravel-aliyun-sms-service",
+  "description": "A Laravel Plugin For Encapsulation AliYun SMS Services",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Zhang XiaoFei",
+      "email": "1326336909@qq.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "require": {
+    "php": ">=7.4",
+    "overtrue/easy-sms": "^1.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Zxf5115\\Laravel\\Aliyun\\Sms\\": "src/"
+    }
+  }
+}
