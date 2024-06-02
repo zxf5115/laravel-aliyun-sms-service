@@ -1,140 +1,135 @@
 <?php
 namespace Zxf5115\Laravel\Aliyun\Sms\Services;
 
+use Zxf5115\Laravel\Aliyun\Sms\Exceptions\SmsException;
+
 /**
- * 响应消息服务类
+ * 阿里云短信服务类
  */
 class AliyunSmsService
 {
-  // 验证码
-  private $_code = null;
+  /**
+   * @author zhangxiaofei [<1326336909@qq.com>]
+   * @dateTime 2024-06-02
+   *
+   * 验证码校验方法
+   *
+   * @param [type] $mobile 手机号码
+   * @param [type] $sms_code 验证码
+   * @param [type] $scene 场景
+   * @return [type]
+   */
+  public function verify($mobile, $sms_code, $scene)
+  {
+    // 验证码缓存前缀
+    $prefix = config('zxf5115.sms.key.sms_code');
+
+    // 组装验证码缓存key值
+    $key = "{$prefix}_{$scene}_{$mobile}";
+
+    // 获取真实验证码
+    $real_sms_code = Redis::get($key);
+
+    // 如果真实验证码不存在
+    if(empty($real_sms_code))
+    {
+      return false;
+    }
+
+    // 验证码错误
+    if($real_sms_code != $sms_code)
+    {
+      return false;
+    }
+
+    Redis::del($key);
+
+    return true;
+  }
 
 
   /**
    * @author zhangxiaofei [<1326336909@qq.com>]
-   * @dateTime 2024-04-13
+   * @dateTime 2024-06-02
    *
    * 发送验证码
    *
-   * @param [type] $mobile 手机号码
-   * @param [type] $code 验证码
-   * @return [type]
-   */
-  public function send($mobile, $code)
-  {
-    try
-    {
-      // 获取短信配置信息
-      $config = self::setConfig();
-
-      $sms = new EasySms($config);
-
-      // 设置短信发送内容
-      $content = self::setContent($code);
-
-      $sms->send($mobile, $content);
-    }
-    catch (NoGatewayAvailableException $e)
-    {
-      $message = $e->getException('aliyun')->getMessage();
-
-      // 记录异常信息
-      record($message);
-
-      return false;
-    }
-  }
-
-
-  /**
-   * Handle the event.
-   *
-   * @param  CodeEvent  $event
-   * @return void
-   */
-  public function verify($mobile, $sms_code, $type)
-  {
-    try
-    {
-      $key = config('key.redis.sms_code') . '_' . $type . '_' . $mobile;
-
-      // 获取真实验证码
-      $real_sms_code = Redis::get($key);
-
-      // 如果真实验证码不存在
-      if(empty($real_sms_code))
-      {
-        return false;
-      }
-
-      // 验证码错误
-      if($real_sms_code != $sms_code)
-      {
-        return false;
-      }
-
-      Redis::del($key);
-
-      return true;
-    }
-    catch(\Exception $e)
-    {
-      // 记录异常信息
-      record($e);
-
-      return false;
-    }
-  }
-
-
-
-
-  /**
-   * @author zhangxiaofei [<1326336909@qq.com>]
-   * @dateTime 2024-06-01
-   *
-   * 生成验证码并保存到redis（10分钟自动失效）
-   *
    * @param [type] $mobile 待发送手机号码
-   * @param [type] $type 验证码类型
+   * @param [type] $scene 验证码场景
    * @param [type] $expire 验证码到期时间
    * @return [type]
    */
-  protected function generate($mobile, $type, $expire = 600)
+  public function execute($mobile, $scene, $expire = 600)
   {
-    $key = config('key.redis.sms_code') . '_' . $type . '_' . $mobile;
+    // 生成验证码
+    $sms_code = $this->generate($mobile, $scene, $expire);
 
-    // 删除之前的验证码
+    // 获取短信配置信息
+    $config = $this->setConfig();
+
+    $sms = new EasySms($config);
+
+    // 设置短信发送内容
+    $content = $this->setContent($sms_code);
+
+    $sms->send($mobile, $content);
+  }
+
+
+
+
+  /**
+   * @author zhangxiaofei [<1326336909@qq.com>]
+   * @dateTime 2024-06-02
+   *
+   * 生成验证码方法
+   *
+   * @param [type] $mobile 待发送手机号码
+   * @param [type] $scene 验证码场景
+   * @param [type] $expire 验证码到期时间
+   * @return [type]
+   */
+  protected function generate($mobile, $scene, $expire)
+  {
+    // 验证码缓存前缀
+    $prefix = config('zxf5115.sms.key.sms_code');
+
+    // 组装验证码缓存key值
+    $key = "{$prefix}_{$scene}_{$mobile}";
+
+    // 如果验证码缓存未过期，抛出验证码未过期异常
     if(Redis::exists($key))
     {
-      throw new SmsException('请勿重复申请');
+      // 验证码还未过期，请勿重复申请
+      throw new SmsException(__('zxf5115::sms.code_not_expired'));
     }
 
     // 生成6位验证码，不足左侧补0
-    $this->_code = str_pad(rand(1, 999999), 6, 0, STR_PAD_LEFT);
+    $sms_code = str_pad(rand(1, 999999), 6, 0, STR_PAD_LEFT);
 
     // 记录验证码
-    Redis::set($key, $this->_code);
+    Redis::set($key, $sms_code);
 
-    // 设置验证码时间为10分钟
+    // 设置验证码有效期时间
     Redis::expire($key, $expire);
+
+    return $sms_code;
   }
 
 
   /**
    * @author zhangxiaofei [<1326336909@qq.com>]
-   * @dateTime 2024-06-01
+   * @dateTime 2024-06-02
    *
    * 设置短信网关
    *
    */
-  protected static function setConfig()
+  protected function setConfig()
   {
     $config = config('easysms');
 
     // 短信公钥
     $access_key = configure('sms_access_key');
-
     // 短信私钥
     $access_secret = configure('sms_access_secret');
     // 短信签名
@@ -152,13 +147,13 @@ class AliyunSmsService
 
   /**
    * @author zhangxiaofei [<1326336909@qq.com>]
-   * @dateTime 2024-06-01
+   * @dateTime 2024-06-02
    *
    * 设置短信发送内容
    *
    * @param [type] $code 短信验证码
    */
-  protected static function setContent($code)
+  protected function setContent($code)
   {
     $template_id = configure('sms_template_id');
 

@@ -39,7 +39,8 @@ class AliyunSmsServiceProvider extends ServiceProvider implements DeferrableProv
    */
   public function boot()
   {
-
+    // 设置配置信息
+    $this->setupConfig();
   }
 
 
@@ -50,6 +51,44 @@ class AliyunSmsServiceProvider extends ServiceProvider implements DeferrableProv
    */
   public function provides()
   {
-    return ['sms', AliyunSmsService::class];
+    return [AliyunSmsService::class];
+  }
+
+
+  /**
+   * @author zhangxiaofei [<1326336909@qq.com>]
+   * @dateTime 2024-06-02
+   *
+   * 设置配置信息
+   *
+   * @return [type]
+   */
+  private function setupConfig()
+  {
+    $path = __DIR__ . '/../../config/config.php';
+
+    // 加载配置文件
+    $this->publishes([
+      $path => config_path('zxf5115.php')
+    ], 'zxf5115');
+
+    $this->mergeConfigFrom($path, 'zxf5115');
+  }
+
+
+  /**
+   * @author zhangxiaofei [<1326336909@qq.com>]
+   * @dateTime 2024-06-02
+   *
+   * 设置语言信息
+   *
+   * @return [type]
+   */
+  private function setupLanguage()
+  {
+    $path = __DIR__ . '/../../lang';
+
+    // 加载语言文件
+    $this->loadTranslationsFrom($path, 'zxf5115');
   }
 }

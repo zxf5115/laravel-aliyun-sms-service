@@ -8,6 +8,7 @@
 
  - PHP >= 7.4
  - laravel >= 6.0
+ - illuminate/support
  - overtrue/easy-sms
 
 ----------
